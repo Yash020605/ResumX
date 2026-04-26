@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: resumx-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 180 wsgi:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: AI_PROVIDER
+        value: groq
+      - key: LLM_BACKEND
+        value: groq
+      - key: GROQ_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: GROQ_MODEL_ANALYZER
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: GROQ_MODEL_FAST
+        value: llama-3.1-8b-instant
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash-lite
+      - key: GROQ_BLACKLIST_TTL
+        value: "60"
+      - key: GROQ_MAX_RETRIES
+        value: "5"
+      - key: JWT_ACCESS_TTL_MINUTES
+        value: "60"
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "30"
+      - key: DATABASE_URL
+        value: sqlite:///resumx.db
+      # ── Secrets — set these manually in Render dashboard ──
+      # JWT_SECRET
+      # GROQ_API_KEY_1 … GROQ_API_KEY_25
+      # GEMINI_API_KEY
+      # RAPIDAPI_KEY
+      # CORS_ORIGINS  (set to your Vercel URL e.g. https://resumxclone.vercel.app)
