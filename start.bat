@@ -1,10 +1,10 @@
 @echo off
-REM AI Resume Analyzer - Quick Start Script
+REM ResumeX - Quick Start Script
 REM This script sets up and runs the complete application
 
 echo.
 echo ╔════════════════════════════════════════════════════════════╗
-echo ║       AI Resume Analyzer - Full Stack Application         ║
+echo ║              ResumeX - AI Career Coach                    ║
 echo ║                   Quick Start Script                       ║
 echo ╚════════════════════════════════════════════════════════════╝
 echo.

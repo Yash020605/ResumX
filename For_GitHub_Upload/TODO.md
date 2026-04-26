@@ -19,5 +19,5 @@
 - API endpoints are accessible and return proper error handling
 - Groq API integration implemented with gemma2-9b-it model
 - **Action Required**: Set GROQ_API_KEY environment variable in backend/.env to a valid Groq API key
-  - The key from test_groq.py (REDACTED_GROQ_KEY) works for testing
+  - The key used for testing works for testing
   - Once set, all endpoints will function with direct Groq API calls instead of local models

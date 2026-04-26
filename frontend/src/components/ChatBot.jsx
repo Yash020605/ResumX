@@ -1,312 +1,158 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, X, Minimize2, Maximize2, Award, Zap } from 'lucide-react'
 import axios from 'axios'
 
-export const ChatBot = () => {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Hey there! 👋 I'm ResumeGPT, your personal career sidekick! I'm here to help you crush your resume, ace interviews, and land your dream job. Ready to level up? 🚀",
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [points, setPoints] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [level, setLevel] = useState(1)
-  const [badges, setBadges] = useState([])
-  const messagesEndRef = useRef(null)
+const SUGGESTIONS = [
+  'How do I improve my resume?',
+  'What skills should I learn next?',
+  'How to prepare for interviews?',
+  'What salary should I expect?',
+]
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+const INIT_MSG = {
+  id: 0,
+  role: 'bot',
+  text: "Hi! I'm your ResumX career coach. Ask me anything about your resume, interviews, or career path. 🚀",
+}
+
+export const ChatBot = ({ context = '' }) => {
+  const [open, setOpen]       = useState(false)
+  const [msgs, setMsgs]       = useState([INIT_MSG])
+  const [input, setInput]     = useState('')
+  const [loading, setLoading] = useState(false)
+  const bottomRef             = useRef(null)
+  const inputRef              = useRef(null)
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [msgs, open])
 
-  // Gamification logic
-  const addPoints = (amount = 10) => {
-    const newPoints = points + amount
-    setPoints(newPoints)
-    
-    // Level up every 100 points
-    if (newPoints % 100 === 0) {
-      setLevel(Math.floor(newPoints / 100) + 1)
-      addBadge('levelup')
-    }
-  }
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 100)
+  }, [open])
 
-  const addBadge = (type) => {
-    const badgeList = {
-      first_chat: { name: '🎯 First Step', description: 'Had your first chat' },
-      curious: { name: '🤔 Curious Mind', description: 'Asked 5 questions' },
-      interview_pro: { name: '🎤 Interview Ready', description: 'Asked interview tips' },
-      resume_master: { name: '📄 Resume Master', description: 'Asked about resume improvements' },
-      levelup: { name: '⬆️ Level Up', description: 'Reached a new level' },
-      streak_5: { name: '🔥 On Fire', description: 'Maintained 5-message streak' },
-    }
-    
-    if (badgeList[type] && !badges.find(b => b.type === type)) {
-      setBadges([...badges, { type, ...badgeList[type] }])
-    }
-  }
-
-  const sendMessage = async () => {
-    if (!input.trim()) return
-
-    // Add user message
-    const userMessage = {
-      id: messages.length + 1,
-      text: input,
-      sender: 'user',
-      timestamp: new Date(),
-    }
-    setMessages((prev) => [...prev, userMessage])
-    const userInput = input
+  const send = async (text) => {
+    const q = (text || input).trim()
+    if (!q) return
     setInput('')
+    setMsgs((m) => [...m, { id: Date.now(), role: 'user', text: q }])
     setLoading(true)
-
-    // Add points for sending message
-    addPoints(5)
-    
-    // Track streak
-    setStreak(streak + 1)
-    if (streak >= 5) {
-      addBadge('streak_5')
-    }
-
-    // Check for badges based on questions
-    if (userInput.toLowerCase().includes('interview')) {
-      addBadge('interview_pro')
-    }
-    if (userInput.toLowerCase().includes('resume')) {
-      addBadge('resume_master')
-    }
-    if (messages.length >= 5) {
-      addBadge('curious')
-    }
-    if (messages.length === 1) {
-      addBadge('first_chat')
-    }
-
     try {
-      const response = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            {
-              role: 'system',
-              content: `You are ResumeGPT, an enthusiastic and helpful career coach AI with a personality! You're energetic, encouraging, and fun while being professional.
-Your traits:
-- Use emojis occasionally for personality
-- Be concise but actionable
-- Show genuine enthusiasm for helping users succeed
-- Give specific, practical advice
-- Celebrate their progress and questions
-- Use their name if they mention it
-- Reference their level of interest and effort
-- Make career advice feel exciting and achievable
-
-You help with:
-- Resume optimization and formatting
-- Career field suggestions
-- Interview preparation and practice
-- Job search strategies
-- Cover letter writing
-- Salary negotiations
-- Professional development
-
-Always be encouraging and make users feel like they're making real progress! 🚀`,
-            },
-            ...messages.map((msg) => ({
-              role: msg.sender === 'user' ? 'user' : 'assistant',
-              content: msg.text,
-            })),
-            { role: 'user', content: userInput },
-          ],
-          max_tokens: 500,
-          temperature: 0.8,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      const botMessage = {
-        id: messages.length + 2,
-        text: response.data.choices[0].message.content,
-        sender: 'bot',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
-      addPoints(15) // Bonus points for getting a response
-    } catch (error) {
-      console.error('Chat error:', error)
-      const errorMessage = {
-        id: messages.length + 2,
-        text: 'Oops! I hit a snag. 😅 Let me catch my breath and try again in a moment!',
-        sender: 'bot',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
+      const history = msgs.map((m) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text }))
+      if (context) history.unshift({ role: 'system', content: `Context: ${context}` })
+      history.push({ role: 'user', content: q })
+      const res = await axios.post('/api/chat', { messages: history })
+      setMsgs((m) => [...m, { id: Date.now() + 1, role: 'bot', text: res.data.reply }])
+    } catch {
+      setMsgs((m) => [...m, { id: Date.now() + 1, role: 'bot', text: "Sorry, I couldn't connect. Please try again." }])
     } finally {
       setLoading(false)
     }
   }
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition transform hover:scale-110 flex items-center justify-center z-50 text-2xl relative"
-        title="Chat with ResumeGPT"
-      >
-        🤖
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold animate-pulse">
-          {level}
-        </span>
-      </button>
-    )
-  }
-
   return (
-    <div
-      className={`fixed bottom-6 right-6 w-96 bg-gradient-to-b from-purple-50 to-pink-50 rounded-lg shadow-2xl z-50 flex flex-col transition-all border-2 border-purple-200 ${
-        isMinimized ? 'h-20' : 'h-[680px]'
-      }`}
-    >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-lg flex items-center gap-2">
-            🤖 ResumeGPT
-            <span className="text-sm bg-white/20 px-2 py-1 rounded-full">Level {level}</span>
-          </h3>
-          <p className="text-xs text-purple-100">Your AI Career Coach 🎯</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsMinimized(!isMinimized)}
-            className="hover:bg-white/20 p-1 rounded transition"
-          >
-            {isMinimized ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
-          </button>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="hover:bg-white/20 p-1 rounded transition"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
+    <>
+      {/* FAB */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-500
+            text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-200
+            flex items-center justify-center text-2xl"
+          title="Career Coach"
+        >
+          💬
+        </button>
+      )}
 
-      {!isMinimized && (
-        <>
-          {/* Stats Bar */}
-          <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-3 flex justify-around border-b-2 border-purple-200">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 font-bold text-purple-700">
-                <Zap size={16} />
-                {points}
+      {/* Chat window */}
+      {open && (
+        <div className="fixed bottom-6 right-6 z-50 w-[360px] flex flex-col rounded-2xl shadow-2xl
+          border border-gray-200 bg-white overflow-hidden"
+          style={{ height: '520px' }}>
+
+          {/* Header */}
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-500 px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-base">🤖</div>
+              <div>
+                <p className="text-white font-bold text-sm leading-none">ResumX Coach</p>
+                <p className="text-violet-200 text-[10px]">Always here to help</p>
               </div>
-              <p className="text-xs text-gray-600">Points</p>
             </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 font-bold text-red-600">
-                <span className="text-lg">🔥</span>
-                {streak}
-              </div>
-              <p className="text-xs text-gray-600">Streak</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 font-bold text-yellow-600">
-                <Award size={16} />
-                {badges.length}
-              </div>
-              <p className="text-xs text-gray-600">Badges</p>
-            </div>
+            <button onClick={() => setOpen(false)}
+              className="text-white/70 hover:text-white transition text-xl leading-none">×</button>
           </div>
 
-          {/* Badges Display */}
-          {badges.length > 0 && (
-            <div className="bg-purple-50 p-2 border-b border-purple-200 overflow-x-auto">
-              <div className="flex gap-2">
-                {badges.map((badge) => (
-                  <div
-                    key={badge.type}
-                    className="flex-shrink-0 text-center p-2 bg-white rounded-lg border-2 border-yellow-400 shadow-sm hover:shadow-md transition cursor-help"
-                    title={badge.description}
-                  >
-                    <div className="text-xl">{badge.name.split(' ')[0]}</div>
-                    <p className="text-xs text-gray-600 whitespace-nowrap">{badge.name.split(' ')[1]}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, idx) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-              >
-                <div
-                  className={`max-w-xs p-3 rounded-lg ${
-                    msg.sender === 'user'
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-none'
-                      : 'bg-white text-gray-800 border-2 border-purple-200 rounded-bl-none shadow-sm'
-                  }`}
-                >
-                  {msg.text}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-gray-50">
+            {msgs.map((m) => (
+              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'bot' && (
+                  <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-xs mr-2 flex-shrink-0 mt-0.5">🤖</div>
+                )}
+                <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed
+                  ${m.role === 'user'
+                    ? 'bg-gradient-to-br from-violet-600 to-indigo-500 text-white rounded-br-sm'
+                    : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'}`}>
+                  {m.text}
                 </div>
               </div>
             ))}
+
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-white border-2 border-purple-200 text-gray-800 p-3 rounded-lg rounded-bl-none shadow-sm">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-200"></div>
+                <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-xs mr-2 flex-shrink-0">🤖</div>
+                <div className="bg-white border border-gray-100 shadow-sm px-4 py-3 rounded-2xl rounded-bl-sm">
+                  <div className="flex gap-1.5 items-center">
+                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
+            <div ref={bottomRef} />
           </div>
 
+          {/* Quick suggestions — only show when just the init message */}
+          {msgs.length === 1 && (
+            <div className="px-3 py-2 flex gap-2 flex-wrap border-t border-gray-100 bg-white flex-shrink-0">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => send(s)}
+                  className="text-[11px] px-2.5 py-1 bg-violet-50 text-violet-700 rounded-full
+                    border border-violet-200 hover:bg-violet-100 transition font-medium">
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Input */}
-          <div className="border-t-2 border-purple-200 p-4 bg-white rounded-b-lg flex gap-2">
+          <div className="px-3 py-3 border-t border-gray-100 bg-white flex gap-2 flex-shrink-0">
             <input
-              type="text"
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask me anything... +5 points! 🎁"
-              className="flex-1 border-2 border-purple-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
+              placeholder="Ask anything…"
               disabled={loading}
+              className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200
+                focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-200
+                bg-gray-50 transition disabled:opacity-50"
             />
             <button
-              onClick={sendMessage}
+              onClick={() => send()}
               disabled={loading || !input.trim()}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 text-white p-2 rounded-lg transition transform hover:scale-105 active:scale-95"
-            >
-              <Send size={20} />
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500
+                text-white flex items-center justify-center hover:opacity-90
+                disabled:opacity-40 transition flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   )
 }

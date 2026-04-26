@@ -5,45 +5,43 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: resume-analyzer-backend
+    container_name: resumex-backend
     ports:
       - "5000:5000"
+    env_file:
+      - ./backend/.env
     environment:
       - FLASK_APP=wsgi.py
       - FLASK_ENV=production
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    volumes:
-      - ./backend:/app
     networks:
-      - resume-analyzer-network
+      - resumex-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
       interval: 30s
       timeout: 10s
+      start_period: 10s
       retries: 3
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: resume-analyzer-frontend
+    container_name: resumex-frontend
     ports:
-      - "3000:3000"
-    environment:
-      - VITE_API_URL=http://localhost:5000/api
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "3000:80"
     networks:
-      - resume-analyzer-network
+      - resumex-network
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
 
 networks:
-  resume-analyzer-network:
+  resumex-network:
     driver: bridge

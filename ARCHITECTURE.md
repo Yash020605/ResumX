@@ -1,5 +1,5 @@
 version: 1.0.0
-title: "AI Resume Analyzer - Full Stack Application"
+title: "ResumeX - AI Career Coach"
 
 overview: |
   A comprehensive, production-ready AI-powered resume analysis and optimization platform.

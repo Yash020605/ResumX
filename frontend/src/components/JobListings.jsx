@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Briefcase, MapPin, Clock, DollarSign, ExternalLink, Loader } from 'lucide-react'
 import { analysisAPI } from '../services/api'
 
-export const JobListings = ({ resume = '' }) => {
+export const JobListings = ({ resume = '', jobDescription = '' }) => {
   const [jobs, setJobs] = useState([])
   const [keywords, setKeywords] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -18,7 +18,7 @@ export const JobListings = ({ resume = '' }) => {
     setError('')
     
     try {
-      const response = await analysisAPI.searchJobs(resume)
+      const response = await analysisAPI.searchJobs(resume, jobDescription)
       console.log('Job search response:', response.data)
       
       if (response.data.success) {
@@ -41,7 +41,7 @@ export const JobListings = ({ resume = '' }) => {
     if (resume && resume.length > 50) {
       fetchJobs()
     }
-  }, [resume])
+  }, [resume, jobDescription])
 
   const getMatchColor = (score) => {
     if (score >= 0.8) return 'from-green-400 to-green-600'
@@ -163,15 +163,39 @@ export const JobListings = ({ resume = '' }) => {
 
               {/* Apply Button */}
               {job.apply_url && (
-                <a
-                  href={job.apply_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
-                >
-                  Apply Now
-                  <ExternalLink size={18} />
-                </a>
+                <div className="flex gap-2 flex-wrap">
+                  <a
+                    href={job.apply_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
+                  >
+                    Apply Now
+                    <ExternalLink size={18} />
+                  </a>
+                  {job.linkedin_url && job.linkedin_url !== job.apply_url && (
+                    <a
+                      href={job.linkedin_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-[#0077B5] hover:bg-[#005885] text-white px-6 py-2 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
+                    >
+                      LinkedIn
+                      <ExternalLink size={18} />
+                    </a>
+                  )}
+                  {!job.apply_url.includes('linkedin') && (
+                    <a
+                      href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}&location=India&f_TPR=r604800`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-[#0077B5] hover:bg-[#005885] text-white px-6 py-2 rounded-lg font-semibold transition transform hover:scale-105 active:scale-95"
+                    >
+                      Search LinkedIn
+                      <ExternalLink size={18} />
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           ))}

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# AI Resume Analyzer - Quick Start Script for Linux/Mac
+# ResumeX - Quick Start Script for Linux/Mac
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════╗"
-echo "║       AI Resume Analyzer - Full Stack Application         ║"
+echo "║              ResumeX - AI Career Coach                    ║"
 echo "║                   Quick Start Script                       ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""

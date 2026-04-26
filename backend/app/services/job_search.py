@@ -1,187 +1,164 @@
 """
-Job search service to find relevant job listings based on resume analysis.
+Job search service – finds relevant LinkedIn job listings based on resume analysis.
+Falls back to LinkedIn search URLs when RapidAPI is unavailable.
 """
-import requests
 import json
 import os
-from typing import Dict, Any, List
-from app.services.resume_analyzer import ResumeAnalyzerService
+import re
+import requests
+from typing import Any, Dict, List
 
 
 class JobSearchService:
-    """Service for searching and matching relevant jobs to resumes."""
-    
-    def __init__(self):
-        """Initialize the service."""
-        self.analyzer = ResumeAnalyzerService()
-        self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
-        
-    def extract_job_keywords(self, resume: str) -> Dict[str, Any]:
-        """Extract job titles, skills, and experience level from resume."""
-        try:
-            prompt = f"""Analyze this resume and extract job search keywords in JSON format.
-                    
-Resume:
-{resume}
 
-Return ONLY valid JSON (no markdown, no extra text) with this structure:
-{{
-    "job_titles": ["list of 3-5 relevant job titles"],
-    "skills": ["list of 5-8 key technical skills"],
-    "experience_level": "entry/mid/senior",
-    "industries": ["list of relevant industries"],
-    "search_query": "best single search query for job boards"
-}}"""
-            
-            response = self.analyzer.ai_model._call_groq(prompt)
-            
-            # Parse JSON response
-            try:
-                data = json.loads(response)
-                return data
-            except json.JSONDecodeError:
-                # If response isn't valid JSON, create default structure
-                return {
-                    "job_titles": ["Software Engineer", "Developer"],
-                    "skills": ["Python", "JavaScript", "Full Stack"],
-                    "experience_level": "mid",
-                    "industries": ["Technology", "Software"],
-                    "search_query": "software engineer"
-                }
+    def __init__(self):
+        self.rapidapi_key = os.getenv("RAPIDAPI_KEY")
+
+    # ── Keyword extraction ────────────────────────────────────────────────────
+
+    def extract_job_keywords(self, resume: str, job_description: str = "") -> Dict[str, Any]:
+        try:
+            base = f"Resume:\n{resume[:2000]}"
+            if job_description:
+                base += f"\n\nTarget JD:\n{job_description[:1000]}"
+            prompt = (
+                f"{base}\n\n"
+                "Return ONLY valid JSON with no extra text:\n"
+                '{"job_titles":["3-5 relevant job titles"],"skills":["5-8 key skills"],'
+                '"experience_level":"entry/mid/senior","industries":["industry"],'
+                '"search_query":"best single search query"}'
+            )
+            # Use the LLM provider directly — no dependency on old GroqAIService
+            from app.agents.llm_provider import get_llm
+            from langchain_core.messages import HumanMessage, SystemMessage
+            llm = get_llm(temperature=0.2, max_tokens=400)
+            resp = llm.invoke([
+                SystemMessage(content="Extract job search keywords. Return ONLY valid JSON."),
+                HumanMessage(content=prompt),
+            ])
+            raw = resp.content.strip()
+            # Strip markdown fences if present
+            import re
+            m = re.search(r'\{[\s\S]+\}', raw)
+            data = __import__('json').loads(m.group() if m else raw)
+            return data
         except Exception as e:
-            print(f"Error extracting keywords: {str(e)}")
+            print(f"[JobSearch] keyword extraction failed: {e}")
             return {
-                "job_titles": ["Software Engineer"],
-                "skills": [],
+                "job_titles":       ["Software Engineer"],
+                "skills":           ["Python"],
                 "experience_level": "mid",
-                "industries": ["Technology"],
-                "search_query": "software engineer"
+                "industries":       ["Technology"],
+                "search_query":     "software engineer",
             }
-    
+
+    # ── JSearch API ───────────────────────────────────────────────────────────
+
     def search_jobs_jsearch(self, keywords: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Search for jobs using JSearch API from RapidAPI."""
         if not self.rapidapi_key:
-            return self._generate_mock_jobs(keywords)
-        
+            return self._linkedin_jobs(keywords)
+
+        titles = keywords.get("job_titles", [])
+        query  = titles[0] if titles else keywords.get("search_query", "Software Engineer")
+
         try:
-            search_query = keywords.get("search_query", "Software Engineer")
-            
-            url = "https://jsearch.p.rapidapi.com/search"
-            
-            querystring = {
-                "query": search_query,
-                "page": "1",
-                "num_pages": "1"
-            }
-            
-            headers = {
-                "X-RapidAPI-Key": self.rapidapi_key,
-                "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
-            }
-            
-            response = requests.get(url, headers=headers, params=querystring, timeout=10)
-            response.raise_for_status()
-            
-            data = response.json()
-            jobs = data.get("data", [])
-            
-            # Format and enhance jobs
-            formatted_jobs = []
-            for job in jobs[:10]:  # Limit to 10 jobs
-                formatted_jobs.append({
-                    "id": job.get("job_id"),
-                    "title": job.get("job_title"),
-                    "company": job.get("employer_name"),
-                    "location": job.get("job_location", "Remote"),
-                    "type": job.get("job_employment_type", "Full-time"),
-                    "description": job.get("job_description", "")[:500],  # First 500 chars
-                    "salary": job.get("job_salary_currency", "") + " " + str(job.get("job_salary_max", "") or "Negotiable"),
-                    "apply_url": job.get("job_apply_link"),
-                    "posted_date": job.get("job_posted_at_datetime_utc", ""),
-                    "match_score": self._calculate_match_score(job, keywords)
+            resp = requests.get(
+                "https://jsearch.p.rapidapi.com/search",
+                headers={
+                    "X-RapidAPI-Key":  self.rapidapi_key,
+                    "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+                },
+                params={"query": f"{query} in India", "page": "1",
+                        "num_pages": "1", "date_posted": "month"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            jobs = resp.json().get("data", [])
+            if not jobs:
+                return self._linkedin_jobs(keywords)
+
+            formatted = []
+            for job in jobs[:8]:
+                apply_url = job.get("job_apply_link") or self._li_url(
+                    job.get("job_title", query), keywords.get("skills", [])
+                )
+                formatted.append({
+                    "id":          job.get("job_id"),
+                    "title":       job.get("job_title"),
+                    "company":     job.get("employer_name"),
+                    "location":    job.get("job_location", "Remote"),
+                    "type":        job.get("job_employment_type", "Full-time"),
+                    "description": (job.get("job_description") or "")[:500],
+                    "salary":      str(job.get("job_salary_max") or "Negotiable"),
+                    "apply_url":   apply_url,
+                    "linkedin_url": self._li_url(job.get("job_title", query),
+                                                 keywords.get("skills", [])),
+                    "posted_date": (job.get("job_posted_at_datetime_utc") or "")[:10],
+                    "match_score": self._score(job, keywords),
                 })
-            
-            return sorted(formatted_jobs, key=lambda x: x["match_score"], reverse=True)
-        
+            return sorted(formatted, key=lambda x: x["match_score"], reverse=True)
+
         except Exception as e:
-            print(f"Error searching jobs: {str(e)}")
-            return self._generate_mock_jobs(keywords)
-    
-    def _calculate_match_score(self, job: Dict, keywords: Dict) -> float:
-        """Calculate relevance score between job and resume keywords."""
-        score = 0.5  # Base score
-        
-        job_title = (job.get("job_title", "") + " " + job.get("job_description", "")).lower()
-        
-        # Check job title matches
-        for title in keywords.get("job_titles", []):
-            if title.lower() in job_title:
-                score += 0.15
-        
-        # Check skill matches
-        for skill in keywords.get("skills", []):
-            if skill.lower() in job_title:
-                score += 0.05
-        
-        # Check industry matches
-        for industry in keywords.get("industries", []):
-            if industry.lower() in job_title:
-                score += 0.10
-        
-        return min(score, 1.0)  # Cap at 1.0
-    
-    def _generate_mock_jobs(self, keywords: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Generate mock job listings when API is unavailable."""
-        job_titles = keywords.get("job_titles", ["Software Engineer"])
-        skills = keywords.get("skills", [])
-        companies = [
-            "TechCorp Solutions", "Innovation Labs", "Digital Ventures",
-            "CloudFirst Inc", "DataFlow Systems", "DevOps Hub",
-            "StartUp AI", "Enterprise Tech"
-        ]
-        locations = ["Remote", "Bangalore", "Delhi", "Hyderabad", "San Francisco", "New York"]
-        
+            print(f"[JobSearch] JSearch error: {e}")
+            return self._linkedin_jobs(keywords)
+
+    # ── LinkedIn URL builder ──────────────────────────────────────────────────
+
+    def _li_url(self, title: str, skills: List[str]) -> str:
+        skill_str = " ".join(skills[:2])
+        query     = f"{title} {skill_str}".strip().replace(" ", "%20")
+        return (
+            f"https://www.linkedin.com/jobs/search/"
+            f"?keywords={query}&location=India&f_TPR=r604800&f_JT=F"
+        )
+
+    def _linkedin_jobs(self, keywords: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Fallback: return LinkedIn search links for each job title."""
+        titles    = keywords.get("job_titles", ["Software Engineer"])
+        skills    = keywords.get("skills", [])
+        companies = ["Google", "Microsoft", "Amazon", "Flipkart", "Infosys",
+                     "TCS", "Wipro", "Persistent Systems", "Razorpay", "Zepto"]
+        locations = ["Pune", "Bangalore", "Hyderabad", "Mumbai", "Remote"]
+
         jobs = []
-        for i, title in enumerate(job_titles[:5]):
+        for i, title in enumerate(titles[:5]):
+            li = self._li_url(title, skills)
             jobs.append({
-                "id": f"job_{i}",
-                "title": title,
-                "company": companies[i % len(companies)],
-                "location": locations[i % len(locations)],
-                "type": "Full-time",
-                "description": f"We are looking for a talented {title} with expertise in {', '.join(skills[:3])}. "
-                              f"Join our growing team and make an impact in the tech industry. "
-                              f"Responsibilities include developing scalable solutions, collaborating with teams, "
-                              f"and driving innovation.",
-                "salary": "₹8-15 LPA",
-                "apply_url": f"https://www.linkedin.com/jobs/search/?keywords={title.replace(' ', '%20')}",
-                "posted_date": "2 days ago",
-                "match_score": 0.85 - (i * 0.05)
+                "id":          f"li_{i}",
+                "title":       title,
+                "company":     companies[i % len(companies)],
+                "location":    locations[i % len(locations)],
+                "type":        "Full-time",
+                "description": (
+                    f"Looking for a {title} with expertise in "
+                    f"{', '.join(skills[:3]) or 'relevant technologies'}."
+                ),
+                "salary":      "₹8-20 LPA",
+                "apply_url":   li,
+                "linkedin_url": li,
+                "posted_date": "Posted this week",
+                "match_score": round(0.85 - i * 0.05, 2),
             })
-        
         return jobs
-    
-    def get_matching_jobs(self, resume: str) -> Dict[str, Any]:
-        """Main method to get jobs matching the resume."""
+
+    # ── Match score ───────────────────────────────────────────────────────────
+
+    def _score(self, job: Dict, keywords: Dict) -> float:
+        text  = (job.get("job_title", "") + " " + job.get("job_description", "")).lower()
+        score = 0.5
+        for t in keywords.get("job_titles", []):
+            if t.lower() in text: score += 0.15
+        for s in keywords.get("skills", []):
+            if s.lower() in text: score += 0.05
+        return min(score, 1.0)
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def get_matching_jobs(self, resume: str, job_description: str = "") -> Dict[str, Any]:
         try:
-            # Extract keywords from resume
-            keywords = self.extract_job_keywords(resume)
-            
-            # Search for jobs
-            jobs = self.search_jobs_jsearch(keywords)
-            
-            return {
-                "success": True,
-                "keywords": keywords,
-                "jobs": jobs,
-                "total": len(jobs)
-            }
-        
+            keywords = self.extract_job_keywords(resume, job_description)
+            jobs     = self.search_jobs_jsearch(keywords)
+            return {"success": True, "keywords": keywords, "jobs": jobs, "total": len(jobs)}
         except Exception as e:
-            print(f"Error getting matching jobs: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e),
-                "jobs": [],
-                "total": 0
-            }
+            print(f"[JobSearch] Error: {e}")
+            return {"success": False, "error": str(e), "jobs": [], "total": 0}

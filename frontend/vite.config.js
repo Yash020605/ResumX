@@ -9,7 +9,7 @@ export default defineConfig({
     allowedHosts: ['overprolixly-tetrarchic-ladonna.ngrok-free.dev', 'localhost'],
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false
       }

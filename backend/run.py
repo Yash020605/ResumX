@@ -21,7 +21,7 @@ if __name__ == '__main__':
         from waitress import serve
         port = int(os.getenv('PORT', 5000))
         print(f"Starting server on http://127.0.0.1:{port}")
-        serve(app, host='127.0.0.1', port=port)
+        serve(app, host='0.0.0.0', port=port)
     except ImportError:
         # Fallback to Flask if waitress not available
         print("Using Flask development server")

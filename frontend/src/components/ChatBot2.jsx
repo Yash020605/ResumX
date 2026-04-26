@@ -8,7 +8,7 @@ export const ChatBot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hey there! 👋 I'm ResumeGPT, your personal career sidekick! I'm here to help you crush your resume, ace interviews, and land your dream job. Ready to level up? 🚀",
+      text: "Hey there! 👋 I'm your personal career sidekick! I'm here to help you crush your resume, ace interviews, and land your dream job. Ready to level up? 🚀",
       sender: 'bot',
       timestamp: new Date(),
     },
@@ -96,54 +96,21 @@ export const ChatBot = () => {
 
     try {
       const response = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
+        '/api/chat',
         {
-          model: 'llama-3.1-8b-instant',
           messages: [
-            {
-              role: 'system',
-              content: `You are ResumeGPT, an enthusiastic and helpful career coach AI with a personality! You're energetic, encouraging, and fun while being professional.
-Your traits:
-- Use emojis occasionally for personality
-- Be concise but actionable
-- Show genuine enthusiasm for helping users succeed
-- Give specific, practical advice
-- Celebrate their progress and questions
-- Use their name if they mention it
-- Reference their level of interest and effort
-- Make career advice feel exciting and achievable
-
-You help with:
-- Resume optimization and formatting
-- Career field suggestions
-- Interview preparation and practice
-- Job search strategies
-- Cover letter writing
-- Salary negotiations
-- Professional development
-
-Always be encouraging and make users feel like they're making real progress! 🚀`,
-            },
             ...messages.map((msg) => ({
               role: msg.sender === 'user' ? 'user' : 'assistant',
               content: msg.text,
             })),
             { role: 'user', content: userInput },
           ],
-          max_tokens: 500,
-          temperature: 0.8,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
         }
       )
 
       const botMessage = {
         id: messages.length + 2,
-        text: response.data.choices[0].message.content,
+        text: response.data.reply,
         sender: 'bot',
         timestamp: new Date(),
       }
@@ -168,7 +135,7 @@ Always be encouraging and make users feel like they're making real progress! �
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition transform hover:scale-110 flex items-center justify-center z-50 text-2xl relative"
-        title="Chat with ResumeGPT"
+        title="Chat with AI Career Coach"
       >
         🤖
         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold animate-pulse">
@@ -188,7 +155,7 @@ Always be encouraging and make users feel like they're making real progress! �
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 rounded-t-lg flex items-center justify-between">
         <div>
           <h3 className="font-bold text-lg flex items-center gap-2">
-            🤖 ResumeGPT
+            🤖 AI Career Coach
             <span className="text-sm bg-white/20 px-2 py-1 rounded-full">Level {level}</span>
           </h3>
           <p className="text-xs text-purple-100">Your AI Career Coach 🎯</p>

@@ -1,7 +1,9 @@
-import React from 'react'
-import { BookOpen, Users } from 'lucide-react'
+import React, { useState } from 'react'
+import { BookOpen, Users, Mic } from 'lucide-react'
+import { VoiceMockInterview } from './VoiceMockInterview'
 
-export const InterviewPrepDisplay = ({ interviewData }) => {
+export const InterviewPrepDisplay = ({ interviewData, resume }) => {
+  const [showMockInterview, setShowMockInterview] = useState(false)
   if (!interviewData) return null
 
   const {
@@ -14,8 +16,40 @@ export const InterviewPrepDisplay = ({ interviewData }) => {
     prep_resources,
   } = interviewData
 
+  if (showMockInterview) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setShowMockInterview(false)}
+          className="text-indigo-600 hover:text-indigo-800 font-medium mb-4 flex items-center gap-1"
+        >
+          &larr; Back to Interview Prep Guide
+        </button>
+        <VoiceMockInterview questions={probable_questions} resume={resume} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Action Button for Mock Interview */}
+      {probable_questions && probable_questions.length > 0 && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+              <Mic size={24} /> Practice with Voice AI
+            </h3>
+            <p className="opacity-90">Simulate a real interview environment with our interactive speech agent.</p>
+          </div>
+          <button
+            onClick={() => setShowMockInterview(true)}
+            className="bg-white text-indigo-600 hover:bg-gray-50 px-6 py-3 rounded-full font-bold shadow-md transition transform hover:scale-105 whitespace-nowrap"
+          >
+            Start Mock Interview
+          </button>
+        </div>
+      )}
+
       {/* Strengths to Highlight */}
       {strengths_to_highlight && strengths_to_highlight.length > 0 && (
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg p-6 shadow-lg">

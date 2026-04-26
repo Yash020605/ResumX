@@ -1,197 +1,324 @@
-# ⚡ Quick Reference Card
+# 🚀 Quick Start Guide
 
-## What Changed?
-✅ **Anthropic Claude → Groq + Ollama**
-✅ **Expensive API → Free options**
-✅ **All features work the same**
+Get ResuMX up and running in 5 minutes!
 
 ---
 
-## Two Ways to Run It
+## ⚡ Fastest Way to Start
 
-### Option 1: Groq (Fast, Cloud) ⚡
-```
-Setup: 2 min  |  Speed: Very Fast  |  Cost: Free
-```
-1. Go to https://console.groq.com (instant signup, no card)
-2. Copy your API key
-3. `echo AI_PROVIDER=groq > backend\.env`
-4. `echo GROQ_API_KEY=your_key >> backend\.env`
-5. `cd backend && python wsgi.py`
-6. `cd frontend && npm run dev` (new terminal)
-7. Open http://localhost:5173
-
----
-
-### Option 2: Ollama (Local, Offline) 🏠
-```
-Setup: 15 min  |  Speed: Slower  |  Cost: Free
-```
-1. Download from https://ollama.ai (2min install)
-2. Terminal 1: `ollama pull mistral` then `ollama serve`
-3. Terminal 2: `echo AI_PROVIDER=ollama > backend\.env`
-4. `cd backend && python wsgi.py`
-5. Terminal 3: `cd frontend && npm run dev`
-6. Open http://localhost:5173
-
----
-
-## Files You Need to Edit
-
-Only **one file needs editing**:
-
-### `backend/.env`
-```dotenv
-# For Groq:
-AI_PROVIDER=groq
-GROQ_API_KEY=your_api_key_here
-
-# OR for Ollama:
-AI_PROVIDER=ollama
-OLLAMA_URL=http://localhost:11434
-```
-
----
-
-## Important URLs
-
-| What | URL |
-|------|-----|
-| **Get Groq Key** | https://console.groq.com |
-| **Download Ollama** | https://ollama.ai |
-| **Frontend** | http://localhost:5173 |
-| **Backend** | http://localhost:5000 |
-
----
-
-## Commands Cheat Sheet
-
-### Setup (First Time)
+### Windows
 ```bash
+start-dev.bat
+```
+
+### Linux/Mac
+```bash
+chmod +x start-dev.sh
+./start-dev.sh
+```
+
+This will:
+1. ✅ Create Python virtual environment (if needed)
+2. ✅ Install backend dependencies
+3. ✅ Start Flask backend on port 5000
+4. ✅ Install frontend dependencies (if needed)
+5. ✅ Start Vite frontend on port 3000
+
+**Then open**: http://localhost:3000
+
+---
+
+## 🔧 Manual Start (If Scripts Don't Work)
+
+### Step 1: Start Backend
+
+```bash
+# Navigate to backend
 cd backend
+
+# Create virtual environment (first time only)
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Mac/Linux
-pip install -r requirements.txt
-```
 
-### Run Backend
-```bash
-cd backend
+# Activate virtual environment
+# Windows:
 venv\Scripts\activate
-python wsgi.py
+# Linux/Mac:
+source venv/bin/activate
+
+# Install dependencies (first time only)
+pip install -r requirements.txt
+
+# Start server
+python run.py
 ```
 
-### Run Frontend
+Backend will run on: http://localhost:5000
+
+### Step 2: Start Frontend (New Terminal)
+
 ```bash
+# Navigate to frontend
 cd frontend
-npm install  # First time only
+
+# Install dependencies (first time only)
+npm install
+
+# Start development server
 npm run dev
 ```
 
-### Start Ollama (if using Ollama)
+Frontend will run on: http://localhost:3000
+
+---
+
+## 🐳 Docker Start (Alternative)
+
 ```bash
-ollama pull mistral  # First time only
-ollama serve
+docker-compose up -d
+```
+
+This starts both backend and frontend in containers.
+
+---
+
+## ✅ Verify It's Working
+
+### Check Backend
+```bash
+curl http://localhost:5000/api/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-04-27T..."
+}
+```
+
+### Check Frontend
+Open browser: http://localhost:3000
+
+You should see the ResuMX login page.
+
+---
+
+## 🎯 Test the TPO Dashboard
+
+1. **Sign up as TPO**:
+   - Email: `tpo@college.edu`
+   - Password: `password123`
+   - Full Name: `John Doe`
+   - Organization: `college.edu`
+   - Role: `TPO`
+
+2. **Navigate to TPO Dashboard**:
+   - Click "TPO Dashboard" from landing page
+
+3. **Go to Live Session Tab**:
+   - Click "🔴 Live Session" tab
+
+4. **Create a Session**:
+   - Click "🚀 Start Session"
+   - You'll see a session code (e.g., `COLLEGE-2026-A1`)
+
+5. **Test Student Join** (New Incognito Window):
+   - Sign up as student with same org domain
+   - Click "Join Session"
+   - Enter the session code
+   - Student should appear in TPO dashboard
+
+6. **Test Live Updates**:
+   - Run a resume analysis as the student
+   - Watch the TPO dashboard update (polls every 10 seconds)
+
+7. **End Session**:
+   - Click "⏹ End Session" in TPO dashboard
+   - View the session summary
+
+---
+
+## 🔍 Troubleshooting
+
+### Backend Won't Start
+
+**Error**: `ModuleNotFoundError: No module named 'flask'`
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+**Error**: `Port 5000 already in use`
+```bash
+# Windows: Find and kill process
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Linux/Mac:
+lsof -ti:5000 | xargs kill -9
+```
+
+### Frontend Won't Start
+
+**Error**: `Cannot find module`
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Error**: `Port 3000 already in use`
+```bash
+# Change port in vite.config.js or kill process
+# Windows:
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# Linux/Mac:
+lsof -ti:3000 | xargs kill -9
+```
+
+### Network Error in TPO Dashboard
+
+**Symptom**: Dashboard shows "Network error" or "Service unavailable"
+
+**Solution**: Make sure backend is running!
+```bash
+# Check if backend is running
+curl http://localhost:5000/api/health
+
+# If not, start it
+cd backend
+python run.py
+```
+
+### CORS Errors
+
+**Symptom**: Browser console shows CORS errors
+
+**Solution**: Backend CORS is configured for `http://localhost:3000`. If you're using a different port, update `backend/app/__init__.py`:
+
+```python
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "http://localhost:YOUR_PORT"],
+        ...
+    }
+})
 ```
 
 ---
 
-## Troubleshooting Fast Track
+## 📋 Environment Variables
 
-| Problem | Fix |
-|---------|-----|
-| API key error | Check .env has GROQ_API_KEY=actual_key_not_placeholder |
-| Ollama connection error | Make sure `ollama serve` is running |
-| Port 5000 in use | Kill existing Flask: `lsof -ti:5000 \| xargs kill` |
-| Module not found | Run `pip install -r requirements.txt` again |
-| npm not found | Install Node.js from nodejs.org |
+### Backend (.env)
 
----
+Required variables are already set in `backend/.env`:
+- ✅ `GROQ_API_KEY_1` through `GROQ_API_KEY_25` (25 keys configured)
+- ✅ `JWT_SECRET` (⚠️ change for production!)
+- ✅ `DATABASE_URL` (SQLite for dev)
+- ✅ `FLASK_ENV=production`
+- ✅ `PORT=5000`
 
-## Features Available
+### Frontend (.env)
 
-✅ Resume-Job Matching (0-100% score)
-✅ Skill Gap Analysis
-✅ Resume Improvement
-✅ Career Field Suggestions
-✅ Interview Question Generation
-✅ PDF Upload Support
+Already configured in `frontend/.env`:
+- ✅ `VITE_API_URL=/api` (proxied to backend)
 
 ---
 
-## Reading Guide
+## 🎓 User Roles
 
-| If You... | Read This |
-|-----------|-----------|
-| Want quick start | **START_HERE.md** |
-| Using Ollama | **OLLAMA_SETUP.md** |
-| Had Anthropic before | **MIGRATION_GUIDE.md** |
-| Want all details | **SETUP_GUIDE.md** |
-| Just want overview | **README.md** |
+### TPO (Training & Placement Officer)
+- Create live sessions
+- View live dashboard
+- End sessions
+- View session summaries
+- Generate batch reports
+- Export student data
+
+### Student
+- Join sessions by code
+- Run resume analysis
+- View personal results
+- Track progress
+
+### Admin
+- All TPO permissions
+- Cross-organization access
 
 ---
 
-## Environment Variables Reference
+## 📊 API Endpoints
 
-```dotenv
-# REQUIRED: Choose one
-AI_PROVIDER=groq          # Cloud option (recommended)
-AI_PROVIDER=ollama        # Local option
+### Health Check
+```bash
+GET http://localhost:5000/api/health
+```
 
-# REQUIRED if using Groq:
-GROQ_API_KEY=gsk_...      # From https://console.groq.com
+### Authentication
+```bash
+POST http://localhost:5000/api/auth/signup
+POST http://localhost:5000/api/auth/login
+POST http://localhost:5000/api/auth/refresh
+```
 
-# REQUIRED if using Ollama:
-OLLAMA_URL=http://localhost:11434  # Local Ollama server
+### TPO Sessions
+```bash
+POST http://localhost:5000/api/tpo/sessions
+POST http://localhost:5000/api/tpo/sessions/{id}/end
+GET  http://localhost:5000/api/tpo/sessions/{id}/dashboard
+GET  http://localhost:5000/api/tpo/sessions/{id}/summary
+GET  http://localhost:5000/api/tpo/sessions
+```
 
-# Optional (Flask):
-FLASK_ENV=development
-FLASK_DEBUG=True
-PORT=5000
-CORS_ORIGINS=*
+### Student Sessions
+```bash
+POST http://localhost:5000/api/sessions/join
 ```
 
 ---
 
-## API Endpoints
+## 🚀 Production Deployment
 
-All 6 endpoints work identically:
+See [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) for full deployment guide.
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /api/health` | Health check |
-| `POST /api/analyze` | Resume analysis |
-| `POST /api/improve-resume` | Resume optimization |
-| `POST /api/career-fields` | Career suggestions |
-| `POST /api/interview-prep` | Interview questions |
-| `POST /api/upload-pdf` | PDF upload |
-
----
-
-## Quick Decision Guide
-
-```
-Fast setup needed? → Use GROQ
-Want best speed? → Use GROQ
-Privacy important? → Use OLLAMA
-Offline needed? → Use OLLAMA
-Not sure? → Use GROQ
-```
+**Quick checklist**:
+1. Change `JWT_SECRET` in `backend/.env`
+2. Use PostgreSQL instead of SQLite
+3. Enable HTTPS
+4. Set `FLASK_ENV=production`
+5. Use Gunicorn for backend
+6. Build frontend: `npm run build`
+7. Serve frontend with nginx/Apache
 
 ---
 
-## Status
+## 📞 Need Help?
 
-✅ Backend complete (supports Groq + Ollama)
-✅ Frontend complete (no changes needed)
-✅ Documentation complete
-✅ Ready to use!
-
----
-
-**Next Step:** Go to START_HERE.md and follow the 5-minute guide!
+1. Check [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md)
+2. Check [ARCHITECTURE.md](ARCHITECTURE.md)
+3. Check backend logs in terminal
+4. Check browser console (F12)
+5. Check network tab in browser DevTools
 
 ---
 
-*Quick Reference v1.0 - January 2026*
+## ✅ Success Checklist
+
+- [ ] Backend running on http://localhost:5000
+- [ ] Frontend running on http://localhost:3000
+- [ ] Can access login page
+- [ ] Can sign up as TPO
+- [ ] Can access TPO Dashboard
+- [ ] Can see "Live Session" tab
+- [ ] Can create a session
+- [ ] Session code is displayed
+- [ ] Can sign up as student (same org)
+- [ ] Can join session with code
+- [ ] Student appears in TPO dashboard
+- [ ] Dashboard polls every 10 seconds
+- [ ] Can end session
+- [ ] Can view session summary
+
+**If all checked**: 🎉 You're ready to go!

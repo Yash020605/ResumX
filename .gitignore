@@ -9,6 +9,7 @@ node_modules/
 venv/
 __pycache__/
 *.pyc
+*.pyo
 
 # Distribution/Build
 dist/
@@ -26,3 +27,26 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Hypothesis test cache
+.hypothesis/
+backend/.hypothesis/
+
+# Local data / secrets
+backend/local_users.json
+
+# Media / recordings
+*.mp4
+*.mov
+*.avi
+
+# Kiro IDE
+.kiro/
+
+# Build logs
+frontend/build_log.txt

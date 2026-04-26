@@ -1,6 +1,6 @@
-# AI Resume Analyzer
+# ResumeX
 
-A sophisticated, production-ready AI-powered resume analysis and optimization platform with React frontend and Python backend that helps job seekers maximize their chances of getting hired.
+ResumeX is a full-stack AI-powered resume analysis and career coaching platform. It helps job seekers maximize their chances of getting hired through intelligent resume analysis, skill gap detection, career path mapping, interview preparation, and portfolio project suggestions.
 
 ## 🎯 What It Does
 
