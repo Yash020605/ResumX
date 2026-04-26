@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://resumx-backend.onrender.com/api/$1"
+      "destination": "https://resumx-e65g.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
